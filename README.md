@@ -1,8 +1,3 @@
-
-Roby Aldave <robyaldave@gmail.com>
-7:33 PM (1 minute ago)
-to me
-
 # Semantic-Liver-Segmentation
 
 ## About the Project
