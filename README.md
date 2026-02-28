@@ -130,6 +130,14 @@ python resume_training.py
 - Validation predictions saved to `checkpoints/val_predictions/epoch_XXXX/`
 - Loss curves saved to `checkpoints/loss_curve.png`
 
+## Results
+
+The model generalizes well to complex liver anatomies, accurately capturing irregular boundaries, concavities, and multi-lobed structures.
+
+![Positive Prediction Sample](val_images/sample_0096.png)
+![Negative Prediction Sample](val_images/sample_0081.png)
+*Left: Input CT slice. Center: Ground truth segmentation. Right: Model prediction. The model captures the overall liver shape including challenging concave regions and fine boundary details.*
+
 ## Optimizations
 
 Several performance optimizations are applied:
