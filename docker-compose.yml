@@ -1,0 +1,38 @@
+services:
+  # Run inference on a single image
+  predict:
+    build: .
+    volumes:
+      - ./data:/data
+      - ./checkpoints:/checkpoints
+      - ./output:/output
+    command: >
+      python predict.py
+        --checkpoint /checkpoints/best_model.pth
+        --input /data/images/
+        --output /output/
+        --visualize
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Run training
+  train:
+    build: .
+    volumes:
+      - ./data:/app/data
+      - ./checkpoints:/app/checkpoints
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    command: python train.py
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]

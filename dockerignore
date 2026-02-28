@@ -1,0 +1,11 @@
+__pycache__
+*.pyc
+.git
+.gitignore
+*.ipynb
+*.pth
+data/
+checkpoints/
+output/
+sample_prediction.png
+README.md

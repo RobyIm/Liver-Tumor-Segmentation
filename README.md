@@ -161,6 +161,68 @@ numpy
 matplotlib
 ```
 
+## Docker
+
+### Setup
+
+```bash
+# Build the container
+docker build -t liver-segmentation .
+```
+
+### Inference
+
+```bash
+# Single image
+docker run --gpus all -v $(pwd)/checkpoints:/checkpoints -v $(pwd)/data:/data -v $(pwd)/output:/output \
+    liver-segmentation python predict.py \
+    --checkpoint /checkpoints/best_model.pth \
+    --input /data/scan.png \
+    --output /output/pred.png
+
+# Directory of images with visualization
+docker run --gpus all -v $(pwd)/checkpoints:/checkpoints -v $(pwd)/data:/data -v $(pwd)/output:/output \
+    liver-segmentation python predict.py \
+    --checkpoint /checkpoints/best_model.pth \
+    --input /data/images/ \
+    --output /output/ \
+    --visualize
+
+# With ground truth comparison
+docker run --gpus all -v $(pwd)/checkpoints:/checkpoints -v $(pwd)/data:/data -v $(pwd)/output:/output \
+    liver-segmentation python predict.py \
+    --checkpoint /checkpoints/best_model.pth \
+    --input /data/images/ \
+    --output /output/ \
+    --masks /data/masks/ \
+    --visualize
+
+# CPU-only (no --gpus flag)
+docker run -v $(pwd)/checkpoints:/checkpoints -v $(pwd)/data:/data -v $(pwd)/output:/output \
+    liver-segmentation python predict.py \
+    --checkpoint /checkpoints/best_model.pth \
+    --input /data/test.png \
+    --output /output/pred.png \
+    --device cpu
+```
+
+### Training
+
+```bash
+docker run --gpus all -v $(pwd)/data:/app/data -v $(pwd)/checkpoints:/app/checkpoints \
+    liver-segmentation python train.py
+```
+
+### Docker Compose
+
+```bash
+# Inference
+docker compose run predict
+
+# Training
+docker compose run train
+```
+
 ## Google Colab
 
 The notebook `Semantic_Segmentation.ipynb` is designed to run on Google Colab with GPU. It mounts Google Drive for dataset storage and checkpoint saving.
