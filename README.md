@@ -4,7 +4,7 @@ Automatic liver segmentation from CT scan images using a Generative Adversarial 
 
 ## Overview
 
-This project trains a GAN to predict binary liver segmentation masks from CT slices. The generator produces masks while the discriminator provides hierarchical feature-based feedback through a custom multi-layer L1 loss. A direct pixel loss is combined with the adversarial loss to stabilize training.
+This project trains a GAN to predict binary liver segmentation masks from CT slices. The generator produces masks while the discriminator provides hierarchical feature-based feedback through a custom multi-layer L1 loss. A direct pixel loss is combined with the adversarial loss to assist training.
 
 ## Architecture
 
@@ -14,20 +14,20 @@ Encoder-decoder CNN with 4 strided downsampling layers, 3 same-resolution bottle
 
 ```
 Input (1×160×160)
-  → Conv(1→64, stride 2) → Conv(64→128, stride 2) → Conv(128→256, stride 2) → Conv(256→512, stride 2)
-  → Conv(512→256) → Upsample ×2
-  → Conv(256→128) → Upsample ×2
-  → Conv(128→64)  → Upsample ×2
-  → Conv(64→1)    → Upsample ×2
+  -> Conv(1->64, stride 2) -> Conv(64->128, stride 2) -> Conv(128->256, stride 2) -> Conv(256->512, stride 2)
+  -> Conv(512->256) -> Upsample ×2
+  -> Conv(256->128) -> Upsample ×2
+  -> Conv(128->64)  -> Upsample ×2
+  -> Conv(64->1)    -> Upsample ×2
 Output (1×160×160)
 ```
 
 ### Discriminator
 
-3-layer convolutional critic used both for adversarial training and as a feature extractor for the perceptual loss. Features are extracted from all layers via `forward_all_layers()` with adaptive average pooling to 8×8.
+3-layer convolutional discriminator used both for adversarial training and as a feature extractor for the perceptual loss. Features are extracted from all layers via `forward_all_layers()` with adaptive average pooling to 8×8.
 
 ```
-Input (1×160×160) → Conv(1→128)+BN+LeakyReLU → Conv(128→256)+BN+LeakyReLU → Conv(256→1)+LeakyReLU
+Input (1×160×160) -> Conv(1->128)+BN+LeakyReLU -> Conv(128->256)+BN+LeakyReLU -> Conv(256->1)+LeakyReLU
 ```
 
 ### Loss Function
@@ -38,7 +38,7 @@ The generator loss combines two components:
 g_loss = pixel_loss + 0.01 × adversarial_loss
 ```
 
-- **Pixel Loss**: Direct L1 (MAE) between predicted and ground truth masks
+- **Pixel Loss**: L1 (MAE) between predicted and ground truth masks
 - **Adversarial Perceptual Loss**: Multi-layer L1 distance between discriminator features of `image × predicted_mask` vs `image × ground_truth_mask`
 
 ## Project Structure
@@ -142,14 +142,12 @@ The model generalizes well to complex liver anatomies, accurately capturing irre
 
 Several performance optimizations are applied:
 
-- **Mixed precision training** (AMP) for ~1.5–2× GPU speedup
+- **Mixed precision training** (AMP) for speedup
 - **Single-pass feature extraction** via `forward_all_layers()` instead of per-layer forward passes
 - **Adaptive average pooling** (8×8) before flattening discriminator features to reduce backward pass cost
 - **cv2.resize** in dataset instead of `torch.nn.functional.interpolate`
-- **torch.compile** for model graph optimization
 - **Discriminator freezing** during generator training step
-- **Persistent DataLoader workers** to avoid process respawn overhead
-
+  
 ## Requirements
 
 ```
@@ -229,8 +227,4 @@ The notebook `Semantic_Segmentation.ipynb` is designed to run on Google Colab wi
 
 1. Upload the LiTS dataset to Google Drive
 2. Open the notebook in Colab
-3. Run cells in order: Preprocessing → Dataset → Models → Loss → Training
-
-## License
-
-This project is for educational and research purposes.
+3. Run cells in order: Preprocessing -> Dataset -> Models -> Loss -> Training
