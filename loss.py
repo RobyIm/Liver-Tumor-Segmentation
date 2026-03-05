@@ -2,7 +2,7 @@
 loss.py - Multi-layer perceptual L1 loss using discriminator features.
 
 Computes L1 distance between hierarchical discriminator features of
-(image × predicted_mask) and (image × ground_truth_mask), encouraging
+(image x predicted_mask) and (image x ground_truth_mask), encouraging
 the generator to produce perceptually realistic segmentations.
 
 Usage:
@@ -56,7 +56,7 @@ class L1Loss(nn.Module):
         torch.Tensor
             Average L1 loss across all discriminator layers.
         """
-        # Single forward pass for each masked input
+        # Extract features from all discriminator layers in a single forward pass
         features_predicted = self.critic_network.forward_all_layers(
             original_images * predicted_labels
         )
@@ -67,8 +67,12 @@ class L1Loss(nn.Module):
         # Accumulate L1 loss across layers
         total_loss = 0.0
         for feat_pred, feat_gt in zip(features_predicted, features_ground_truth):
+            # Flatten spatial dimensions for element-wise comparison
             flat_pred = torch.flatten(feat_pred, start_dim=1)
             flat_gt = torch.flatten(feat_gt, start_dim=1)
+            # Mean Absolute Error between predicted and ground truth feature representations
             total_loss += (flat_pred - flat_gt).abs().mean()
 
-        return total_loss / self.num_layers
+        # Average over the number of discriminator layers
+        average_loss = total_loss / self.num_layers
+        return average_loss

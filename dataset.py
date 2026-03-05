@@ -45,19 +45,24 @@ class LiverCTDataset(Dataset):
         self.mask_dir = os.path.join(root_dir, "masks")
         self.output_size = output_size
 
+        # List of (image_path, mask_path) tuples
         self.samples = []
 
+        # Walk through case folders to pair images with masks
         for case in sorted(os.listdir(self.img_dir)):
             case_img_dir = os.path.join(self.img_dir, case)
             case_mask_dir = os.path.join(self.mask_dir, case)
 
+            # Skip non-directory entries
             if not os.path.isdir(case_img_dir):
                 continue
-
+            
+            # Match each image file with its corresponding mask
             for file in sorted(os.listdir(case_img_dir)):
                 img_path = os.path.join(case_img_dir, file)
                 mask_path = os.path.join(case_mask_dir, file)
 
+                # Only include samples where both image and mask exist
                 if os.path.exists(mask_path):
                     self.samples.append((img_path, mask_path))
 
@@ -84,6 +89,7 @@ class LiverCTDataset(Dataset):
         """
         img_path, mask_path = self.samples[idx]
 
+        # Load as grayscale numpy arrays
         img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
         mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
 
@@ -92,10 +98,16 @@ class LiverCTDataset(Dataset):
         if mask is None:
             raise ValueError(f"Failed to load mask: {mask_path}")
 
+        # Resize image with bilinear interpolation
         img = cv2.resize(img, (self.output_size, self.output_size), interpolation=cv2.INTER_LINEAR)
+
+        # Resize mask with nearest-neighbor
         mask = cv2.resize(mask, (self.output_size, self.output_size), interpolation=cv2.INTER_NEAREST)
 
+        # Convert to tensors and normalize image to [0, 1]
         img = torch.from_numpy(img).unsqueeze(0).float() / 255.0
+
+        # Binarize mask: any non-zero pixel becomes 1.0
         mask = (torch.from_numpy(mask).unsqueeze(0).float() / 255.0 > 0).float()
 
         return mask, img

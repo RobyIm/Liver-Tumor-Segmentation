@@ -23,23 +23,28 @@ MAX_SLICES = 1000
 
 def normalize_ct(x):
     """
-    Normalize CT scan values to [0, 255] range.
+    Normalize a CT slice to 8-bit grayscale.
 
-    Clips HU values to [-200, 300] window (suitable for abdominal CT),
-    then normalizes to uint8 range.
+    Clips Hounsfield Units to a predefined window, rescales values
+    to [0, 1], and converts to uint8 range [0, 255].
 
     Parameters
     ----------
     x : np.ndarray
-        Raw CT slice in Hounsfield units.
+        2D CT slice as float array (Hounsfield Units).
 
     Returns
     -------
     np.ndarray
-        Normalized uint8 image.
+        8-bit normalized image.
     """
+    # Clip intensity values to liver-relevant HU window
     x = np.clip(x, -200, 300)
+
+    # Min-max normalize to [0, 1] (add epsilon to avoid division by zero)
     x = (x - x.min()) / (x.max() - x.min() + 1e-8)
+
+    # Scale to [0, 255] and convert to unsigned 8-bit
     return (x * 255).astype(np.uint8)
 
 
@@ -57,31 +62,42 @@ def process_volume(file_number):
     str
         Status message.
     """
+
+    # Make file paths
     seg_path = os.path.join(DATA_DIR, f"segmentation-{file_number}.nii")
     vol_path = os.path.join(DATA_DIR, f"volume-{file_number}.nii")
 
+    # Skip if either volume or segmentation file is missing
     if not (os.path.exists(seg_path) and os.path.exists(vol_path)):
         return f"Skipped {file_number}"
 
+    # Load NIfTI files
     seg_nii = nib.load(seg_path)
     vol_nii = nib.load(vol_path)
 
     seg_proxy = seg_nii.dataobj
     vol_proxy = vol_nii.dataobj
 
+    # Determine number of axial slices
     depth = seg_nii.shape[2]
     num_slices = min(MAX_SLICES, depth)
     slice_indices = np.linspace(0, depth - 1, num_slices, dtype=int)
 
+    # Create output directories for images and masks
     img_dir = f"{OUT_DIR}/images/{file_number}"
     mask_dir = f"{OUT_DIR}/masks/{file_number}"
     os.makedirs(img_dir, exist_ok=True)
     os.makedirs(mask_dir, exist_ok=True)
 
+    # Process slices
     for i in slice_indices:
+        # Extract CT slice and normalize
         img = normalize_ct(np.array(vol_proxy[:, :, i], dtype=np.float32))
+
+        # Extract segmentation mask
         mask = np.array(seg_proxy[:, :, i], dtype=np.uint8)
 
+        # Save as PNG files
         cv2.imwrite(f"{img_dir}/{i}.png", img)
         cv2.imwrite(f"{mask_dir}/{i}.png", mask)
 
@@ -91,7 +107,7 @@ def process_volume(file_number):
 if __name__ == "__main__":
     os.makedirs(OUT_DIR, exist_ok=True)
 
-    # Auto-detect all volume files
+    # Automatically find all volumes
     file_numbers = sorted([
         int(f.split('-')[1].split('.')[0])
         for f in os.listdir(DATA_DIR)
@@ -100,7 +116,6 @@ if __name__ == "__main__":
 
     print("Found volumes:", len(file_numbers))
 
-    # Parallel processing
     num_workers = max(1, cpu_count() - 1)
     print("Using workers:", num_workers)
 

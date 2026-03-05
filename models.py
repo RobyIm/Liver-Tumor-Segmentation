@@ -33,20 +33,20 @@ class Generator(nn.Module):
         super(Generator, self).__init__()
 
         # Encoder (downsampling)
-        self.layer1 = self._conv_block(input_channels, 64, 4, 2, 1)
-        self.layer2 = self._conv_block(64, 128, 4, 2, 1, batch_norm=True)
-        self.layer3 = self._conv_block(128, 256, 4, 2, 1, batch_norm=True)
-        self.layer4 = self._conv_block(256, 512, 4, 2, 1, batch_norm=True)
+        self.layer1 = self.conv_block(input_channels, 64, 4, 2, 1)
+        self.layer2 = self.conv_block(64, 128, 4, 2, 1, batch_norm=True)
+        self.layer3 = self.conv_block(128, 256, 4, 2, 1, batch_norm=True)
+        self.layer4 = self.conv_block(256, 512, 4, 2, 1, batch_norm=True)
 
         # Bottleneck
-        self.layer5 = self._conv_block(512, 256, 3, 1, 1, batch_norm=True)
-        self.layer6 = self._conv_block(256, 128, 3, 1, 1, batch_norm=True)
-        self.layer7 = self._conv_block(128, 64, 3, 1, 1, batch_norm=True)
+        self.layer5 = self.conv_block(512, 256, 3, 1, 1, batch_norm=True)
+        self.layer6 = self.conv_block(256, 128, 3, 1, 1, batch_norm=True)
+        self.layer7 = self.conv_block(128, 64, 3, 1, 1, batch_norm=True)
 
         # Output
-        self.layer8 = self._conv_block(64, 1, 3, 1, 1)
+        self.layer8 = self.conv_block(64, 1, 3, 1, 1)
 
-    def _conv_block(self, in_channels, out_channels, kernel_size, stride, padding, batch_norm=False):
+    def conv_block(self, in_channels, out_channels, kernel_size, stride, padding, batch_norm=False):
         """
         Convolutional block: Conv2d + ReLU + optional BatchNorm.
 
@@ -133,15 +133,27 @@ class Discriminator(nn.Module):
 
         self.model = nn.Sequential(
             # Layer 1: input -> 128 channels
-            nn.Conv2d(input_channels, 128, 3, 1, 1),
+            nn.Conv2d(in_channels=input_channels,
+                      out_channels=128,
+                      kernel_size=3,
+                      stride=1,
+                      padding=1),
             nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2),
             # Layer 2: 128 -> 256 channels
-            nn.Conv2d(128, 256, 3, 1, 1),
+            nn.Conv2d(in_channels=128,
+                      out_channels=256,
+                      kernel_size=3,
+                      stride=1,
+                      padding=1),
             nn.BatchNorm2d(256),
             nn.LeakyReLU(0.2),
             # Layer 3: 256 -> 1 channel
-            nn.Conv2d(256, 1, 3, 1, 1),
+            nn.Conv2d(in_channels=256,
+                      out_channels=1,
+                      kernel_size=3,
+                      stride=1,
+                      padding=1),
             nn.LeakyReLU(0.2),
         )
 

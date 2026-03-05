@@ -26,10 +26,7 @@ from dataset import LiverCTDataset
 from models import Generator, Discriminator
 from loss import L1Loss
 
-
-# -------------------------
-# CONFIGURATION
-# -------------------------
+# Configuration
 DATA_ROOT = "/content/lits_png"
 SAVE_DIR = "/content/drive/MyDrive/checkpoints"
 BATCH_SIZE = 10
@@ -50,14 +47,13 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
-    # -------------------------
-    # DATASET + TRAIN/VAL SPLIT
-    # -------------------------
+    # Dataset initalization and hyperparameters
     full_dataset = LiverCTDataset(DATA_ROOT)
 
     val_size = int(len(full_dataset) * VAL_RATIO)
     train_size = len(full_dataset) - val_size
 
+    # Split dataset
     train_dataset, val_dataset = random_split(
         full_dataset,
         [train_size, val_size],
@@ -84,24 +80,21 @@ def main():
         persistent_workers=True
     )
 
-    # -------------------------
-    # MODELS
-    # -------------------------
+    # Initalize Models
     generator = Generator(input_channels=IMAGE_CHANNELS).to(device)
     discriminator = Discriminator(input_channels=IMAGE_CHANNELS).to(device)
 
     generator = torch.compile(generator)
     discriminator = torch.compile(discriminator)
 
-    # -------------------------
-    # LOSS & OPTIMIZERS
-    # -------------------------
+    # Define Loss
     criterion = L1Loss(
         critic_network=discriminator,
         num_layers=NUM_DISCRIMINATOR_LAYERS,
         num_training_images=BATCH_SIZE
     )
 
+    # Define Optimizers
     generator_optimizer = optim.Adam(
         generator.parameters(), lr=LR_GENERATOR, betas=(0.5, 0.999)
     )
@@ -109,11 +102,10 @@ def main():
         discriminator.parameters(), lr=LR_DISCRIMINATOR, betas=(0.5, 0.999)
     )
 
+    # Enable Mixed precision
     scaler = GradScaler()
 
-    # -------------------------
-    # TRAINING LOOP
-    # -------------------------
+    # Training Loop
     best_val_loss = float('inf')
     train_losses = []
     val_losses = []
@@ -127,16 +119,18 @@ def main():
             real_masks = real_masks.to(device, non_blocking=True)
             real_images = real_images.to(device, non_blocking=True)
 
-            # ----- Train Discriminator -----
+            # Train Discriminator
             discriminator_optimizer.zero_grad(set_to_none=True)
 
             with autocast(device_type='cuda'):
                 fake_masks = generator(real_images)
 
+                # Calculate hierarchical feature L1 losses
                 feat_real = discriminator.forward_all_layers(real_images * real_masks)
                 feat_fake = discriminator.forward_all_layers(real_images * fake_masks.detach())
 
                 d_loss = 0.0
+                # Calculate discriminator losses
                 for fr, ff in zip(feat_real, feat_fake):
                     d_loss += (torch.flatten(fr, 1) - torch.flatten(ff, 1)).abs().mean()
                 d_loss = d_loss / NUM_DISCRIMINATOR_LAYERS
@@ -145,16 +139,23 @@ def main():
             scaler.step(discriminator_optimizer)
             scaler.update()
 
-            # ----- Train Generator -----
+            # Train Generator
             for p in discriminator.parameters():
+                # Freeze discriminator training
                 p.requires_grad = False
 
             generator_optimizer.zero_grad(set_to_none=True)
 
             with autocast(device_type='cuda'):
                 generated_masks = generator(real_images)
+
+                # Adversarial loss from generator
                 g_adv_loss = criterion(real_images, generated_masks, real_masks)
+
+                # Direct pixel loss
                 g_pixel_loss = (generated_masks - real_masks).abs().mean()
+
+                # Pixel loss allows to ease early training phase and adversarial refines later
                 g_loss = g_pixel_loss + 0.01 * g_adv_loss
 
             scaler.scale(g_loss).backward()
@@ -175,9 +176,7 @@ def main():
                     f"G Loss: {g_loss.item():.4f}"
                 )
 
-        # -------------------------
-        # VALIDATION
-        # -------------------------
+        # Validation
         avg_train_loss = epoch_g_loss / len(train_loader)
         avg_val_loss = validate(generator, val_loader, criterion, device)
 
@@ -186,9 +185,7 @@ def main():
 
         print(f"Epoch [{epoch}/{NUM_EPOCHS}] Train G Loss: {avg_train_loss:.4f} | Val Loss: {avg_val_loss:.4f}")
 
-        # -------------------------
-        # SAVE BEST MODEL
-        # -------------------------
+        # Save Best Model
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             torch.save({
@@ -202,9 +199,7 @@ def main():
             }, os.path.join(SAVE_DIR, "best_model.pth"))
             print(f"Best model saved at epoch {epoch} with Val Loss: {avg_val_loss:.4f}")
 
-        # -------------------------
-        # SAVE VALIDATION PREDICTIONS
-        # -------------------------
+        # Save Validation Predictions
         if epoch % VIS_INTERVAL == 0:
             save_val_predictions(generator, val_loader, epoch, device)
             save_loss_curves(train_losses, val_losses)
